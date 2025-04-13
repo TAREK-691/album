@@ -1,10 +1,10 @@
 [
   {
     "type": "video",
-    "url": "uploads/sample-video.mp4"
+    "url": "https://album-api-dqvf.onrender.com"
   },
   {
     "type": "photo",
-    "url": "uploads/sample-photo.jpg"
+    "url": "https://album-api-dqvf.onrender.com"
   }
 ]
