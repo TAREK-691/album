@@ -1,0 +1,10 @@
+[
+  {
+    "type": "video",
+    "url": "uploads/sample-video.mp4"
+  },
+  {
+    "type": "photo",
+    "url": "uploads/sample-photo.jpg"
+  }
+]
