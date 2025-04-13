@@ -1,62 +1,62 @@
-require('dotenv').config();
-const express = require('express');
-const multer = require('multer');
-const mongoose = require('mongoose');
-const path = require('path');
-const fs = require('fs');
+const express = require("express");
+const mongoose = require("mongoose");
+const multer = require("multer");
+const cors = require("cors");
+const fs = require("fs");
+const path = require("path");
+require("dotenv/config");
 
 const app = express();
-const port = process.env.PORT || 5000;
+const PORT = process.env.PORT || 10000;
 
-// MongoDB connection
-mongoose.connect(process.env.MONGODB_URI, {
+app.use(cors());
+app.use(express.json());
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+mongoose
+  .connect(process.env.MONGODB_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
-}).then(() => console.log('MongoDB connected'))
-  .catch((err) => console.log(err));
+  })
+  .then(() => console.log("MongoDB connected"))
+  .catch((err) => console.error("MongoDB error:", err));
 
-// Media schema
 const mediaSchema = new mongoose.Schema({
-    type: String,
-    url: String,
+  url: String,
+  type: String,
+  uploadedAt: { type: Date, default: Date.now },
 });
 
-const Media = mongoose.model('Media', mediaSchema);
+const Media = mongoose.model("Media", mediaSchema);
 
-// Multer setup
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        const dir = 'uploads';
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir);
-        cb(null, dir);
-    },
-    filename: (req, file, cb) => {
-        cb(null, Date.now() + path.extname(file.originalname));
-    },
+  destination: function (req, file, cb) {
+    const dir = "uploads";
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir);
+    cb(null, dir);
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname));
+  },
 });
+
 const upload = multer({ storage });
 
-// Upload route
-app.post('/upload', upload.single('media'), async (req, res) => {
-    if (!req.file) return res.status(400).send('No file uploaded.');
-    const media = new Media({
-        type: req.file.mimetype.startsWith('image') ? 'photo' : 'video',
-        url: req.protocol + '://' + req.get('host') + '/' + req.file.path.replace('\\', '/'),
-    });
-    await media.save();
-    res.send('File uploaded successfully!');
+app.post("/upload", upload.single("media"), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+
+  const type = req.file.mimetype.includes("image") ? "photo" : "video";
+  const url = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+
+  const newMedia = new Media({ url, type });
+  await newMedia.save();
+
+  res.json({ success: true, url, type });
 });
 
-// Get all media
-app.get('/media', async (req, res) => {
-    const media = await Media.find();
-    res.json(media);
+app.get("/media", async (req, res) => {
+  const media = await Media.find().sort({ uploadedAt: -1 });
+  res.json(media);
 });
 
-// Serve static files
-app.use('/uploads', express.static('uploads'));
-
-// Start server
-app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
-});
+app.listen(PORT, () => console.log(`API running on port ${PORT}`));
