@@ -1,10 +1,13 @@
 const express = require("express");
 const mongoose = require("mongoose");
-const multer = require("multer");
 const cors = require("cors");
-const fs = require("fs");
+const dotenv = require("dotenv");
+const multer = require("multer");
 const path = require("path");
-require("dotenv/config");
+const fs = require("fs");
+
+// Load environment variables from .env
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -13,6 +16,7 @@ app.use(cors());
 app.use(express.json());
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+// MongoDB connection
 mongoose
   .connect(process.env.MONGODB_URI, {
     useNewUrlParser: true,
@@ -21,6 +25,7 @@ mongoose
   .then(() => console.log("MongoDB connected"))
   .catch((err) => console.error("MongoDB error:", err));
 
+// Media schema for video/photo
 const mediaSchema = new mongoose.Schema({
   url: String,
   type: String,
@@ -29,6 +34,7 @@ const mediaSchema = new mongoose.Schema({
 
 const Media = mongoose.model("Media", mediaSchema);
 
+// Set up storage for uploaded files
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const dir = "uploads";
@@ -42,6 +48,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+// Route for uploading media
 app.post("/upload", upload.single("media"), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
@@ -54,6 +61,7 @@ app.post("/upload", upload.single("media"), async (req, res) => {
   res.json({ success: true, url, type });
 });
 
+// Route for listing media
 app.get("/media", async (req, res) => {
   const media = await Media.find().sort({ uploadedAt: -1 });
   res.json(media);
