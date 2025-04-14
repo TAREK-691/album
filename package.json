@@ -1,22 +1,18 @@
 {
   "name": "album-api",
   "version": "1.0.0",
-  "description": "GoatBot album API with MongoDB",
+  "description": "Simple video album API with category support",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js"
+    "start": "node index.js"
   },
+  "author": "Xos Eren",
+  "license": "MIT",
   "dependencies": {
     "cors": "^2.8.5",
-    "dotenv": "^16.0.3",
+    "dotenv": "^16.3.1",
     "express": "^4.18.2",
-    "fs-extra": "^11.1.1",
-    "mongoose": "^7.0.4",
-    "multer": "^1.4.5-lts.1",
-    "nodemon": "^2.0.21"
-  },
-  "engines": {
-    "node": "16.x"
+    "mongoose": "^7.6.1",
+    "multer": "^1.4.5-lts.1"
   }
 }
