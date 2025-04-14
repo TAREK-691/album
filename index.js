@@ -1,70 +1,55 @@
 const express = require("express");
 const mongoose = require("mongoose");
+const multer = require("multer");
 const cors = require("cors");
 const dotenv = require("dotenv");
-const multer = require("multer");
-const path = require("path");
 const fs = require("fs");
+const path = require("path");
 
-// Load environment variables from .env
 dotenv.config();
-
 const app = express();
-const PORT = process.env.PORT || 10000;
-
 app.use(cors());
-app.use(express.json());
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use("/uploads", express.static("uploads"));
 
-// MongoDB connection
-mongoose
-  .connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-  .then(() => console.log("MongoDB connected"))
-  .catch((err) => console.error("MongoDB error:", err));
+const Video = require("./models/Video");
 
-// Media schema for video/photo
-const mediaSchema = new mongoose.Schema({
-  url: String,
-  type: String,
-  uploadedAt: { type: Date, default: Date.now },
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
 });
 
-const Media = mongoose.model("Media", mediaSchema);
-
-// Set up storage for uploaded files
+// Multer setup
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const dir = "uploads";
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir);
-    cb(null, dir);
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + path.extname(file.originalname));
-  },
+  destination: (req, file, cb) => cb(null, "uploads/"),
+  filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
 });
-
 const upload = multer({ storage });
 
-// Route for uploading media
-app.post("/upload", upload.single("media"), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: "No file uploaded" });
-
-  const type = req.file.mimetype.includes("image") ? "photo" : "video";
-  const url = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
-
-  const newMedia = new Media({ url, type });
-  await newMedia.save();
-
-  res.json({ success: true, url, type });
+// Upload Route
+app.post("/upload", upload.single("video"), async (req, res) => {
+  try {
+    const { category } = req.body;
+    const url = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+    const video = new Video({ category, url });
+    await video.save();
+    res.json({ message: "Uploaded", url });
+  } catch (err) {
+    res.status(500).json({ error: "Upload failed" });
+  }
 });
 
-// Route for listing media
-app.get("/media", async (req, res) => {
-  const media = await Media.find().sort({ uploadedAt: -1 });
-  res.json(media);
+// Fetch all or by category
+app.get("/videos", async (req, res) => {
+  const { category } = req.query;
+  try {
+    const videos = category
+      ? await Video.find({ category })
+      : await Video.find();
+    res.json(videos);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch" });
+  }
 });
 
-app.listen(PORT, () => console.log(`API running on port ${PORT}`));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`API running at http://localhost:${PORT}`));
