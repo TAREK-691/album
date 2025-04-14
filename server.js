@@ -1,41 +1,70 @@
 const express = require("express");
-const fs = require("fs");
+const multer = require("multer");
+const mongoose = require("mongoose");
 const cors = require("cors");
+const fs = require("fs");
+const Media = require("./models/Media");
 
 const app = express();
+const port = process.env.PORT || 3000;
+
 app.use(cors());
+app.use(express.static("uploads"));
 
-app.get("/", (req, res) => {
-  res.send("Album API is running!");
-});
+// MongoDB connection
+mongoose.connect("mongodb+srv://eren:erenxten@cluster0.facb9ur.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0", {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+}).then(() => console.log("MongoDB connected"))
+  .catch(err => console.error("MongoDB error:", err));
 
-// Route for categories
-app.get("/categories", (req, res) => {
-  try {
-    const categories = JSON.parse(fs.readFileSync("./data/categories.json", "utf-8"));
-    res.json(categories);
-  } catch (err) {
-    res.status(500).send("Error loading categories data: " + err.message);
+// Multer storage
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = `uploads/${req.body.category}`;
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + "-" + file.originalname);
   }
 });
+const upload = multer({ storage });
 
-// Route for videos
-app.get("/videos", (req, res) => {
-  const category = req.query.category;
-  try {
-    const videos = JSON.parse(fs.readFileSync("./data/videos.json", "utf-8"));
-    const filtered = videos.filter(v => v.category === category);
-    res.json(filtered);
-  } catch (err) {
-    res.status(500).send("Error loading video data: " + err.message);
-  }
+// Upload route
+app.post("/upload", upload.single("file"), async (req, res) => {
+  if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+
+  const { category, description, uploader, type } = req.body;
+  const url = `${req.protocol}://${req.get("host")}/${category}/${req.file.filename}`;
+
+  const media = new Media({
+    filename: req.file.filename,
+    category,
+    url,
+    type,
+    description,
+    uploader
+  });
+
+  await media.save();
+
+  res.json({ message: "File uploaded!", url });
 });
 
-// Ensure proper response for unexpected errors
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).send('Something went wrong!');
+// View files in a category
+app.get("/view/:category", async (req, res) => {
+  const { category } = req.params;
+  const files = await Media.find({ category });
+  res.json({ files });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// List categories
+app.get("/categories", async (req, res) => {
+  const categories = await Media.distinct("category");
+  res.json({ categories });
+});
+
+app.listen(port, () => {
+  console.log(`Server running at http://localhost:${port}`);
+});
