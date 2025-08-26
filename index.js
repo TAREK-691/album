@@ -22,7 +22,7 @@ const albumSchema = new mongoose.Schema({
 });
 const Album = mongoose.model('Album', albumSchema);
 
-app.get('/', (req, res) => res.send('Ayan Album API is live!'));
+app.get('/', (req, res) => res.send('Tarek mems API is live,ne akhon use kor!'));
 
 app.get('/albums', async (req, res) => {
   try {
